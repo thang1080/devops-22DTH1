@@ -1,0 +1,63 @@
+name: Deploy Website to GitHub Pages
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-running: false
+
+jobs:
+  # Job 1: Kiểm tra code (CI)
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify required files exist
+        run: |
+          echo "Dang kiem tra du 3 file..."
+          if [ ! -f "index.html" ] || [ ! -f "style.css" ] || [ ! -f "script.js" ]; then
+            echo "LOI: Thieu mot trong cac file bat buoc!"
+            exit 1
+          fi
+          echo "Tim thay du 3 file."
+
+      - name: Check <title> tag in index.html
+        run: |
+          echo "Dang kiem tra the <title>..."
+          if ! grep -q "<title>" index.html; then
+            echo "LOI: File index.html thieu the <title>!"
+            exit 1
+          fi
+          echo "The <title> hop le."
+
+  # Job 2: Deploy lên GitHub Pages (CD) - Chỉ chạy khi Job 'check' thành công
+  deploy:
+    needs: check
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
